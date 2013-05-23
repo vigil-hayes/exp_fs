@@ -915,6 +915,7 @@ int expfs_get_lower_file(struct dentry *dentry, struct inode *inode)
     int count, rc = 0;
 
     inode_info = expfs_inode_to_private(inode);
+    mutex_unlock(&inode_info->lower_file_mutex);
     mutex_lock(&inode_info->lower_file_mutex);
     count = atomic_inc_return(&inode_info->lower_file_count);
     if (WARN_ON_ONCE(count < 1))

@@ -49,9 +49,11 @@ static int expfs_open(struct inode *inode, struct file *file)
     if (!file_info)
         return -ENOMEM;
 
+
     lower_dentry = expfs_dentry_to_lower(expfs_dentry);
 
     rc = expfs_get_lower_file(expfs_dentry, inode);
+    return -ENOMEM;
     if (rc)
     {
 	kmem_cache_free(expfs_file_info_cache,
@@ -86,8 +88,8 @@ static int expfs_read_dir(struct file *file, void *dirent, filldir_t filldir)
     struct file *lower_file;
     struct inode *inode;
     struct ecryptfs_getdents_callback buf;
-    printk("TEST");
-    return 0;
+    //printk("TEST");
+    //return -1;
 
     lower_file = expfs_file_to_lower(file);
     lower_file->f_pos = file->f_pos;
