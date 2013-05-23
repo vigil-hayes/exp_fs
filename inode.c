@@ -37,6 +37,7 @@
 #include <linux/parser.h>
 #include <linux/magic.h>
 #include <linux/slab.h>
+#include <linux/mm.h>
 #include <linux/file.h>
 #include <linux/mount.h>
 #include <asm/uaccess.h>
@@ -103,7 +104,7 @@ static int expfs_inode_set(struct inode *inode, void *opaque)
         init_special_inode(inode, mode, dev);*/
 
     if (S_ISDIR(inode->i_mode))
-        inode->i_fop = &simple_dir_operations;
+        inode->i_fop = &expfs_dir_operations;
     else if (special_file(inode->i_mode))
         init_special_inode(inode, inode->i_mode, inode->i_rdev);
     else
