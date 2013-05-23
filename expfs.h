@@ -18,6 +18,7 @@ extern int expfs_nommu_mmap(struct file *file, struct vm_area_struct *vma);
 #endif
 
 extern const struct file_operations expfs_file_operations;
+extern const struct file_operations expfs_dir_operations;
 extern const struct vm_operations_struct generic_file_vm_ops;
 extern int __init init_rootfs(void);
 
@@ -55,6 +56,14 @@ struct expfs_dentry_info {
 struct expfs_fs_info {
 	struct expfs_mount_opts mount_opts;
         struct super_block *lower_sb;
+};
+
+struct ecryptfs_getdents_callback {
+	void *dirent;
+	struct dentry *dentry;
+	filldir_t filldir;
+	int filldir_called;
+	int entries_written;
 };
 
 static inline struct expfs_inode_info *
@@ -143,6 +152,9 @@ expfs_set_dentry_lower_mnt(struct dentry *dentry, struct vfsmount *lower_mnt)
 	((struct expfs_dentry_info *)dentry->d_fsdata)->lower_path.mnt =
 		lower_mnt;
 }
+
+static int expfs_open(struct inode *inode, struct file *file);
+static int expfs_read_dir(struct file *file, void *dirent, filldir_t filldir);
 
 //struct kmem_cache *expfs_open_req_cache;
 

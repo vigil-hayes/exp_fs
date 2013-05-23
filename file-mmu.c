@@ -25,6 +25,7 @@
  */
 
 #include <linux/fs.h>
+#include <linux/fs_stack.h>
 #include <linux/mm.h>
 #include <linux/slab.h>
 #include "expfs.h"
@@ -48,9 +49,11 @@ static int expfs_open(struct inode *inode, struct file *file)
     if (!file_info)
         return -ENOMEM;
 
+
     lower_dentry = expfs_dentry_to_lower(expfs_dentry);
 
     rc = expfs_get_lower_file(expfs_dentry, inode);
+    return -ENOMEM;
     if (rc)
     {
 	kmem_cache_free(expfs_file_info_cache,
@@ -73,6 +76,45 @@ static int expfs_open(struct inode *inode, struct file *file)
     return 0;
 }
 
+/**
+ * ecryptfs_readdir
+ * @file: The eCryptfs directory file
+ * @dirent: Directory entry handle
+ * @filldir: The filldir callback function
+ */
+static int expfs_read_dir(struct file *file, void *dirent, filldir_t filldir)
+{
+    int rc;
+    struct file *lower_file;
+    struct inode *inode;
+    struct ecryptfs_getdents_callback buf;
+    //printk("TEST");
+    //return -1;
+
+    lower_file = expfs_file_to_lower(file);
+    lower_file->f_pos = file->f_pos;
+    inode = file->f_path.dentry->d_inode;
+    memset(&buf, 0, sizeof(buf));
+    buf.dirent = dirent;
+    buf.dentry = file->f_path.dentry;
+    buf.filldir = filldir;
+    buf.filldir_called = 0;
+    buf.entries_written = 0;
+    //rc = vfs_readdir(lower_file, ecryptfs_filldir, (void *)&buf);
+    rc = vfs_readdir(lower_file, filldir, (void *)&buf);
+    file->f_pos = lower_file->f_pos;
+    if (rc < 0)
+        goto out;
+    if (buf.filldir_called && !buf.entries_written)
+        goto out;
+    if (rc >= 0)
+        fsstack_copy_attr_atime(inode,
+                lower_file->f_path.dentry->d_inode);
+out:
+    return rc;
+}
+
+
 const struct address_space_operations expfs_aops = {
 	.readpage	= simple_readpage,
 	.write_begin	= simple_write_begin,
@@ -83,6 +125,20 @@ const struct address_space_operations expfs_aops = {
 const struct file_operations expfs_file_operations = {
 	.read		= expfs_sync_read,
 	.aio_read	= generic_file_aio_read,
+	.write		= expfs_sync_write,
+	.aio_write	= generic_file_aio_write,
+	.mmap		= generic_file_mmap,
+	.fsync		= noop_fsync,
+	.splice_read	= generic_file_splice_read,
+	.splice_write	= generic_file_splice_write,
+	.llseek		= generic_file_llseek,
+        .open           = expfs_open,
+};
+
+const struct file_operations expfs_dir_operations = {
+        .readdir        = expfs_read_dir,
+	.read		= generic_read_dir,
+	//.aio_read	= generic_file_aio_read,
 	.write		= expfs_sync_write,
 	.aio_write	= generic_file_aio_write,
 	.mmap		= generic_file_mmap,
